@@ -580,6 +580,7 @@ function csv(){
 
 
 // ---------------- POOL ANALYZER (The Graph via Cloudflare Worker) ----------------
+const POOL_API_DEFAULT = "https://btn-pool-api.luisedt.workers.dev";
 const POOL_ID = "0xc069bb46ba971c3bf5424fb505525db3006d8091";
 const USDC_TOKEN = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913";
 const KNOWN_ROUTE_CONTRACTS = new Set([
@@ -608,7 +609,7 @@ function initPoolDates(){
   $("poolEnd").value = iso(end);
 }
 async function fetchPoolPage(start,end,limit,cursor){
-  const u = new URL("/pool-api", window.location.origin);
+  const u = new URL(POOL_API_DEFAULT);
   u.searchParams.set("start",start);
   u.searchParams.set("end",end);
   u.searchParams.set("limit",String(limit));
