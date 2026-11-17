@@ -143,9 +143,12 @@ const short=a=>a&&a.length>12?a.slice(0,6)+"…"+a.slice(-4):(a||"—");
 let rows=[],filtered=[],filter="ALL",uiPage=1;
 const uiPageSize=200;
 
+const API_BASE = "https://btn-analyzer-btn-analyzer-api.e7jo7f.easypanel.host";
+
 async function J(u){
- const r=await fetch(u,{cache:"no-store"}),t=await r.text();
- let j;try{j=JSON.parse(t)}catch{throw Error("Invalid local server response")}
+ const apiUrl = new URL(u, API_BASE);
+ const r=await fetch(apiUrl.toString(),{cache:"no-store"}),t=await r.text();
+ let j;try{j=JSON.parse(t)}catch{throw Error("Invalid API server response")}
  if(!r.ok||!j.ok)throw Error(j.error||`HTTP ${r.status}`);
  return j;
 }
