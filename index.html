@@ -645,7 +645,7 @@ function initPoolDates(){
   $("poolEnd").value = iso(end);
 }
 async function fetchPoolPage(start,end,limit,cursor){
-  const u = new URL("/pool-api", "https://btn-pool-api.luisedt.workers.dev");
+  const u = new URL("https://btn-pool-api.luisedt.workers.dev");
   u.searchParams.set("start",start);
   u.searchParams.set("end",end);
   u.searchParams.set("limit",String(limit));
