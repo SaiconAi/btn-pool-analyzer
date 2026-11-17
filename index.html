@@ -17,6 +17,7 @@
 .small-note{font-size:12px;line-height:1.55;margin:12px 2px}
 .wallet-action{padding:6px 9px;font-size:11px;background:#2a3a50;border-color:#536783}
 .wallet-link{color:#b8c9e2}
+.export-actions{display:flex;gap:8px;flex-wrap:wrap}
 @media(max-width:900px){.pool-form{grid-template-columns:1fr 1fr}.pool-form label:first-child{grid-column:1/-1}.pool-form button{grid-column:1/-1}}
 @media(max-width:560px){.pool-form{grid-template-columns:1fr}.pool-form button{grid-column:auto}.tabs button{flex:1}.brand{gap:11px}.brand-logo{width:82px;max-height:60px}.brand-copy h1{font-size:20px}}
 
@@ -76,7 +77,7 @@
    </section>
   </div>
   <section class="panel">
-   <div class="toolbar"><div class="title">Pool Swap History</div><button id="poolExport">Export All Swaps to CSV</button></div>
+   <div class="toolbar"><div class="title">Pool Swap History</div><div class="export-actions"><button id="poolExport">Export All Swaps to CSV</button><button id="poolPdf">Export PDF Report</button></div></div>
    <div class="filters">
     <button class="active" data-pfilter="ALL">All</button>
     <button data-pfilter="BUY">Buys</button>
@@ -122,7 +123,7 @@
 </div>
 
 <section class="panel">
- <div class="toolbar"><div class="title">BTN Transfer History</div><button id="export">Export All to CSV</button></div>
+ <div class="toolbar"><div class="title">BTN Transfer History</div><div class="export-actions"><button id="export">Export All to CSV</button><button id="walletPdf">Export PDF Report</button></div></div>
  <div class="filters"><button class="active" data-filter="ALL">All</button><button data-filter="BUY">Buys</button><button data-filter="SELL">Sells</button><button data-filter="WITHDRAWAL">Withdrawals</button><button data-filter="STAKING">Staking</button><button data-filter="UNSTAKE">Unstake</button><button data-filter="TRANSFER">Transfers</button></div>
  <div class="table-wrap"><table><thead><tr><th>Block</th><th>Age / Date</th><th>Action</th><th>Type</th><th class="r">BTN</th><th>From</th><th>To</th><th>TX</th></tr></thead><tbody id="history"></tbody></table></div>
  <div class="pager"><div><button id="prev">Previous</button> <button id="next">Next</button></div><div id="pageInfo" class="pageinfo"></div></div>
@@ -578,9 +579,44 @@ function csv(){
  a.href=URL.createObjectURL(b);a.download=`BTN_wallet_basescan_${$("wallet").value}_${rows.length}.csv`;a.click();
 }
 
+function printReport(title,subtitle,metrics,sections,note=""){
+ const win=window.open("","_blank");
+ if(!win){alert("The PDF report window was blocked. Allow pop-ups for this site and try again.");return}
+ const safe=v=>String(v??"—").replace(/[&<>\"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+ const metricHtml=metrics.map(([label,value])=>`<div class="metric"><div class="label">${safe(label)}</div><div class="value">${safe(value)}</div></div>`).join("");
+ const sectionsHtml=sections.map(section=>{
+  const head=section.headers.map(h=>`<th>${safe(h)}</th>`).join("");
+  const body=section.rows.length?section.rows.map(row=>`<tr>${row.map(cell=>`<td>${safe(cell)}</td>`).join("")}</tr>`).join(""):`<tr><td colspan="${section.headers.length}">No records</td></tr>`;
+  return `<section><h2>${safe(section.title)}</h2><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></section>`;
+ }).join("");
+ const html=`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${safe(title)}</title><style>
+ @page{size:A4 landscape;margin:12mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#172033;margin:0;font-size:10px}h1{font-size:21px;margin:0 0 5px}h2{font-size:14px;margin:18px 0 7px}.subtitle{color:#526176;margin-bottom:14px}.metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;margin:12px 0 18px}.metric{border:1px solid #cbd3df;border-radius:6px;padding:8px;min-width:0}.label{font-size:8px;color:#58677c;text-transform:uppercase}.value{font-size:13px;font-weight:bold;margin-top:4px;overflow-wrap:anywhere}table{width:100%;border-collapse:collapse;table-layout:auto}th{background:#e9eef5;text-align:left;font-size:8px;padding:6px;border:1px solid #cbd3df}td{font-size:8px;padding:5px;border:1px solid #d8dee8;overflow-wrap:anywhere}tr{break-inside:avoid;page-break-inside:avoid}thead{display:table-header-group}section{margin-top:12px}.note{margin-top:14px;color:#59677b;font-size:9px}.footer{margin-top:18px;padding-top:7px;border-top:1px solid #ccd3dd;color:#68758a;font-size:8px}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+ </style></head><body><h1>${safe(title)}</h1><div class="subtitle">${safe(subtitle)} · Generated ${safe(new Date().toLocaleString())}</div><div class="metrics">${metricHtml}</div>${sectionsHtml}${note?`<div class="note">${safe(note)}</div>`:""}<div class="footer">SAICON · BTN Pool & Wallet Analyzer V34</div><script>window.addEventListener('load',()=>setTimeout(()=>window.print(),500));<\/script></body></html>`;
+ win.document.open();win.document.write(html);win.document.close();win.focus();
+}
+
+function exportWalletPdf(){
+ if(!rows.length){alert("Analyze a wallet before exporting the PDF report.");return}
+ const wallet=$("wallet").value.trim();
+ const metrics=[
+  ["Wallet",wallet],["BTN movements",$("moves").textContent],["BTN purchased",$("bought").textContent],
+  ["BTN sold",$("sold").textContent],["BTN withdrawals",$("withdrawals").textContent],
+  ["BTN staking",$("staking").textContent],["BTN unstake",$("unstake").textContent],
+  ["Total transfer in",$("transferIn").textContent],["Total transfer out",$("transferOut").textContent],
+  ["Unique source wallets",$("uniqueSources").textContent],["Unique destination wallets",$("uniqueDestinations").textContent]
+ ];
+ const sources=agg("in",wallet).map((x,i)=>[i+1,x.address,fmt(x.total),x.count]);
+ const destinations=agg("out",wallet).map((x,i)=>[i+1,x.address,fmt(x.total),x.count]);
+ const history=rows.map(r=>[r.block,r.age,r.action,r.type,fmt(r.btn),r.from,r.to,r.tx]);
+ printReport("BTN Wallet Analyzer V34 Report",`Wallet: ${wallet} · ${rows.length.toLocaleString()} BTN movements`,metrics,[
+  {title:"Top 20 BTN Sources",headers:["#","Source wallet","BTN received","Transfers"],rows:sources},
+  {title:"Top 20 BTN Destinations",headers:["#","Destination wallet","BTN sent","Transfers"],rows:destinations},
+  {title:"BTN Transfer History",headers:["Block","Age / Date","Action","Type","BTN","From","To","Transaction hash"],rows:history}
+ ]);
+}
+
 
 // ---------------- POOL ANALYZER (The Graph via Cloudflare Worker) ----------------
-const POOL_API_DEFAULT = "https://btn-pool-api.luisedt.workers.dev";
 const POOL_ID = "0xc069bb46ba971c3bf5424fb505525db3006d8091";
 const USDC_TOKEN = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913";
 const KNOWN_ROUTE_CONTRACTS = new Set([
@@ -609,7 +645,7 @@ function initPoolDates(){
   $("poolEnd").value = iso(end);
 }
 async function fetchPoolPage(start,end,limit,cursor){
-  const u = new URL(POOL_API_DEFAULT);
+  const u = new URL("/pool-api", window.location.origin);
   u.searchParams.set("start",start);
   u.searchParams.set("end",end);
   u.searchParams.set("limit",String(limit));
@@ -734,6 +770,24 @@ function exportPoolCsv(){
   a.download=`BTN_pool_swaps_${$("poolStart").value}_${$("poolEnd").value}_${poolRows.length}.csv`;a.click();
   URL.revokeObjectURL(a.href);
 }
+function exportPoolPdf(){
+ if(!poolRows.length){alert("Analyze the pool before exporting the PDF report.");return}
+ const wallets=poolWalletStats();
+ const buyers=wallets.filter(w=>w.buyCount>0).sort((a,b)=>b.buys-a.buys).slice(0,20).map((w,i)=>[i+1,w.wallet,poolNum(w.buys),w.buyCount]);
+ const sellers=wallets.filter(w=>w.sellCount>0).sort((a,b)=>b.sells-a.sells).slice(0,20).map((w,i)=>[i+1,w.wallet,poolNum(w.sells),w.sellCount]);
+ const metrics=[
+  ["Date range",`${$("poolStart").value} to ${$("poolEnd").value}`],
+  ["Total swaps",$("pMoves").textContent],["Buy swaps",$("pBuyCount").textContent],
+  ["Sell swaps",$("pSellCount").textContent],["Unique trader wallets",$("pWallets").textContent],
+  ["BTN bought",$("pBought").textContent],["BTN sold",$("pSold").textContent],
+  ["Buy volume (USDC)",$("pBuyUsd").textContent],["Sell volume (USDC)",$("pSellUsd").textContent],
+  ["Net BTN flow",$("pNet").textContent],["Indexed block",$("pBlock").textContent]
+ ];
+ printReport("BTN Pool Analyzer V34 Report",`BTN/USDC Pool · ${$("poolStart").value} to ${$("poolEnd").value} · ${poolRows.length.toLocaleString()} swaps`,metrics,[
+  {title:"Top 20 Buyer Wallets",headers:["#","Wallet","BTN bought","Swaps"],rows:buyers},
+  {title:"Top 20 Seller Wallets",headers:["#","Wallet","BTN sold","Swaps"],rows:sellers}
+ ],"The complete swap-by-swap dataset is available using Export All Swaps to CSV.");
+}
 function openWalletAnalyzer(wallet){
   if(!/^0x[a-fA-F0-9]{40}$/.test(wallet||""))return;
   document.querySelectorAll("[data-tab]").forEach(b=>b.classList.toggle("active",b.dataset.tab==="wallet"));
@@ -749,6 +803,8 @@ document.querySelectorAll("[data-tab]").forEach(b=>b.addEventListener("click",()
 }));
 $("poolAnalyze").addEventListener("click",analyzePool);
 $("poolExport").addEventListener("click",exportPoolCsv);
+$("poolPdf").addEventListener("click",exportPoolPdf);
+$("walletPdf").addEventListener("click",exportWalletPdf);
 $("poolWalletSearch").addEventListener("input",applyPoolFilter);
 document.querySelectorAll("[data-pfilter]").forEach(b=>b.addEventListener("click",()=>{
   document.querySelectorAll("[data-pfilter]").forEach(x=>x.classList.remove("active"));
